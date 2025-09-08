@@ -1,0 +1,70 @@
+FROM ubuntu:24.04
+
+WORKDIR /OCRFlux
+
+ENV LANG=en_US.UTF-8 \
+    PIP_ROOT_USER_ACTION=ignore \
+    PIP_BREAK_SYSTEM_PACKAGES=true \
+    PIP_NO_CACHE_DIR=true \
+    PIP_DISABLE_PIP_VERSION_CHECK=true \
+    PYTHONPATH=/OCRFlux \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+SHELL ["/bin/bash", "-c"]
+
+# Install system dependencies and uv
+RUN set -o pipefail && \
+    # Use Aliyun mirrors
+    sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list.d/ubuntu.sources && \
+    sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list.d/ubuntu.sources && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+        ca-certificates \
+        curl \
+        fonts-crosextra-caladea \
+        fonts-crosextra-carlito \
+        gsfonts \
+        lcdf-typetools \
+        locales \
+        msttcorefonts \
+        poppler-utils \
+        poppler-data \
+        python3.12-dev \
+        python3.12-full \
+        software-properties-common \
+        ttf-mscorefonts-installer && \
+    locale-gen en_US.UTF-8 && \
+    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    # Promote uv to a system PATH location for subsequent build layers
+    mv $HOME/.local/bin/uv /usr/local/bin/ && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /root/.cache
+
+
+COPY . /OCRFlux/
+
+RUN if [ -d ".venv" ]; then \
+        echo "Found existing .venv, copying for faster build..." && \
+        cp -r .venv /OCRFlux/.venv; \
+    else \
+        echo "No .venv found, creating with uv..." && \
+        uv venv .venv && \
+        . .venv/bin/activate && \
+        uv pip install . --find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer/; \
+    fi
+
+# Set virtual environment PATH
+ENV PATH="/OCRFlux/.venv/bin:$PATH"
+
+# Make server.sh executable
+RUN chmod +x /OCRFlux/ocrflux/server.sh
+
+# Expose port (default 8000, configurable via env var)
+ENV PORT=8000
+EXPOSE ${PORT}
+
+# Set default model path (configurable via env var)
+ENV MODEL_PATH="/models/ocrflux"
+
+# Startup script
+ENTRYPOINT ["/bin/bash", "-lc", "/OCRFlux/ocrflux/server.sh \"$MODEL_PATH\" \"$PORT\""]

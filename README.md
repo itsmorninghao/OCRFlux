@@ -17,6 +17,37 @@
   </a>
 </p>
 
+This repository is a fork of OCRFlux with added API support. It exposes standard HTTP endpoints so you can invoke OCRFlux for document parsing and reasoning, making it easy to integrate into automation pipelines or backend services.
+
+The main improvements and enhancements are:
+- Integrated a vLLM-based API server that supports efficient concurrent inference;
+- Provided a complete Docker deployment setup for quickly bringing the service online locally or on servers;
+- Supports flexible configuration via environment variables (model path, ports, mount directories, etc.) to fit different deployment needs;
+- Remains compatible with the upstream OCRFlux project for easy future synchronization.
+
+#### Server Deployment (Docker)
+
+To serve the API (vLLM-based) as a network service, use the provided `Dockerfile.server` and `docker-compose.server.yml` for one-command deployment:
+
+Using Docker Compose:
+```bash
+docker-compose -f docker-compose.server.yml up
+
+# Customize:
+HOST_PORT=9000 \
+CONTAINER_PORT=9000 \
+MODEL_PATH=/models/your-model \
+MODEL_VOLUME=/path/to/your/models \
+docker-compose -f docker-compose.server.yml up
+```
+
+After the container starts, you can hit the health and inference endpoints (exact routes depend on vLLM configuration):
+```bash
+curl http://localhost:8000/health
+```
+
+A test script `ocr_test.py` is provided for exercising the API
+
 OCRFlux is a multimodal large language model based toolkit for converting PDFs and images into clean, readable, plain Markdown text. It aims to push the current state-of-the-art to a significantly higher level.
 
 Try the online demo: [OCRFlux Demo](https://ocrflux.pdfparser.io/)

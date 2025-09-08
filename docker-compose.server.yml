@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  ocrflux-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "${HOST_PORT:-8000}:${CONTAINER_PORT:-8000}"
+    environment:
+      - MODEL_PATH=${MODEL_PATH:-/models/ocrflux}
+      - PORT=${CONTAINER_PORT:-8000}
+    volumes:
+      # Mount model directory
+      - "${MODEL_VOLUME:-./models}:/models"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
